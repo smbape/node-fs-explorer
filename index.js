@@ -1,3 +1,5 @@
+'use strict';
+
 var fs = require('fs'),
     sysPath = require('path');
 
@@ -21,39 +23,30 @@ module.exports = {
  * If you want listing control, call next after you processed the file or folder
  * @param  {String}     start    File or folder to read
  * @param  {Function}   callfile called every time a file is encounter with (path[relative to initial start], stats, next)
- * @param  {Function}   calldir  called every time a folder is encounter with (path[relative to initial start], stats, files, 'start|end', next)
+ * @param  {Function}   calldir  called every time a folder is encounter with (path[relative to initial start], stats, files, 'begin|end', next). To skip folder, call next(null, true) on begin
  * @param  {Object}     options  options.resolve[=true] => resolve symlink; options.followSymlink => explore symlink if directory
  * @param  {Function}   done     called when there are no more file nor folders to read
  */
 function explore(start, callfile, calldir, options, done) {
-    var count = 0;
+    var argsLen = arguments.length;
 
-    function take() {
-        ++count;
-    }
-
-    function give(err) {
-        if (--count === 0 || err) {
-            done(err);
-        }
-    }
-
-    // Start process
-    take();
-
-    if (arguments.length < 2) {
+    if (argsLen < 2) {
         throw new Error('Too few arguments');
-    } else if (arguments.length === 3) {
+    } else if (argsLen === 3) {
         done = calldir;
         calldir = null;
-    } else if (arguments.length === 4) {
+    } else if (argsLen === 4) {
         if ('function' === typeof options) {
             done = options;
             options = null;
         }
     }
 
-    (options && 'object' === typeof options) || (options = {});
+    if (!isFunction(callfile)) {
+        throw new Error('callfile must be a function');
+    }
+
+    isObject(options) || (options = {});
 
     if (typeof callfile !== 'function') {
         callfile = doneFileFn;
@@ -65,12 +58,7 @@ function explore(start, callfile, calldir, options, done) {
         done = emptyFn;
     }
 
-    // Read folder
-    take();
-    _explore(start, callfile, calldir, options, give /* Folder reading is done */ );
-
-    // Main process is done
-    give();
+    _explore(start, callfile, calldir, options, done);
 }
 
 /**
@@ -82,7 +70,7 @@ function explore(start, callfile, calldir, options, done) {
  * If you want listing control, call next after you processed the file or folder
  * @param  {String}     start    File or folder to read
  * @param  {Function}   callfile called every time a file is encounter with (path[relative to initial start], stats, next)
- * @param  {Function}   calldir  called every time a folder is encounter with (path[relative to initial start], stats, files, 'start|end', next)
+ * @param  {Function}   calldir  called every time a folder is encounter with (path[relative to initial start], stats, files, 'begin|end', next)To skip folder, call next(null, true) on begin
  * @param  {Object}     options  options.resolve[=true] => resolve symlink; options.followSymlink => explore symlink if directory
  * @param  {Function}   done     called when there are no more file nor folders to read
  */
@@ -187,3 +175,22 @@ function doneDirectoryFn(path, stats, files, state, done) {
 }
 
 function emptyFn() {}
+
+// ==============
+// From lodash
+// ==============
+var objToString = Object.prototype.toString
+
+function isObject(value) {
+    // Avoid a V8 JIT bug in Chrome 19-20.
+    // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
+    var type = typeof value;
+    return !!value && (type === 'object' || type === 'function');
+}
+
+function isFunction(value) {
+    // The use of `Object#toString` avoids issues with the `typeof` operator
+    // in older versions of Chrome and Safari which return 'function' for regexes
+    // and Safari 8 which returns 'object' for typed array constructors.
+    return isObject(value) && objToString.call(value) === '[object Function]';
+}
