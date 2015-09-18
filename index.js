@@ -36,7 +36,7 @@ function explore(start, callfile, calldir, options, done) {
         done = calldir;
         calldir = null;
     } else if (argsLen === 4) {
-        if ('function' === typeof options) {
+        if (isFunction(options)) {
             done = options;
             options = null;
         }
@@ -48,13 +48,15 @@ function explore(start, callfile, calldir, options, done) {
 
     isObject(options) || (options = {});
 
-    if (typeof callfile !== 'function') {
-        callfile = doneFileFn;
+    if (!isFunction(callfile)) {
+        callfile = nextFileFn;
     }
-    if (typeof calldir !== 'function') {
-        calldir = doneDirectoryFn;
+
+    if (!isFunction(calldir)) {
+        calldir = nextDirectoryFn;
     }
-    if (typeof done !== 'function') {
+
+    if (!isFunction(done)) {
         done = emptyFn;
     }
 
@@ -98,79 +100,91 @@ function _explore(start, callfile, calldir, options, done) {
 
         if (stats.isSymbolicLink() && (options.followLink === true || options.resolve !== false)) {
             linkStats = stats;
-            try {
-                stats = fs.lstatSync(fs.realpathSync(start));
-            } catch (err) {
-                // invalid symlink
-                callfile(start, stats, give);
-                return;
-            }
-        }
+            fs.realpath(start, function(err, resolvedPath) {
+                if (err) {
+                    give(err);
+                    return;
+                }
 
-        if (stats.isFile()) {
-            callfile(start, linkStats || stats, give);
+                fs.lstat(resolvedPath, function(err, stats) {
+                    if (err) {
+                        // invalid symlink
+                        callfile(start, stats, give);
+                        return;
+                    }
+
+                    __doExplore(start, callfile, calldir, options, stats, linkStats, take, give);
+                });
+            });
+        } else {
+            __doExplore(start, callfile, calldir, options, stats, linkStats, take, give);
+        }
+    });
+}
+
+function __doExplore(start, callfile, calldir, options, stats, linkStats, take, give) {
+    if (stats.isFile()) {
+        callfile(start, linkStats || stats, give);
+        return;
+    }
+
+    if (!stats.isDirectory()) {
+        give(new Error('Not a File nor a directory ' + start));
+        return;
+    }
+
+    stats = linkStats || stats;
+
+    if (stats.isSymbolicLink() && options.followLink !== true) {
+        calldir(start, linkStats || stats, [], 'end', give);
+        return;
+    }
+
+    fs.readdir(start, function(err, files) {
+        var _i = 0,
+            _len = files.length;
+        if (err) {
+            give(err);
             return;
         }
 
-        if (!stats.isDirectory()) {
-            give(new Error('Not a File nor a directory ' + start));
-            return;
-        }
+        calldir(start, stats, files, 'begin', next);
 
-        stats = linkStats || stats;
-
-        if (stats.isSymbolicLink() && options.followLink !== true) {
-            calldir(start, linkStats || stats, [], 'end', give);
-            return;
-        }
-
-        fs.readdir(start, function(err, files) {
-            var _i = 0,
-                _len = files.length;
+        function next(err, skip) {
             if (err) {
                 give(err);
                 return;
             }
 
-            calldir(start, stats, files, 'begin', next);
-
-            function next(err, skip) {
-                if (err) {
-                    give(err);
-                    return;
-                }
-
-                if (skip || files.length === 0) {
-                    calldir(start, stats, files, 'end', give);
-                    return;
-                }
-
-                _explore(sysPath.join(start, files[_i]), callfile, calldir, options, iterate);
+            if (skip || files.length === 0) {
+                calldir(start, stats, files, 'end', give);
+                return;
             }
 
-            function iterate(err, skip) {
-                if (err) {
-                    give(err);
-                    return;
-                }
+            _explore(sysPath.join(start, files[_i]), callfile, calldir, options, iterate);
+        }
 
-                if (skip || ++_i === _len) {
-                    calldir(start, stats, files, 'end', give);
-                    return;
-                }
-
-                _explore(sysPath.join(start, files[_i]), callfile, calldir, options, iterate);
+        function iterate(err, skip) {
+            if (err) {
+                give(err);
+                return;
             }
-        });
 
+            if (skip || ++_i === _len) {
+                calldir(start, stats, files, 'end', give);
+                return;
+            }
+
+            _explore(sysPath.join(start, files[_i]), callfile, calldir, options, iterate);
+        }
     });
 }
 
-function doneFileFn(file, stats, done) {
+function nextFileFn(file, stats, done) {
     done();
 }
 
-function doneDirectoryFn(path, stats, files, state, done) {
+function nextDirectoryFn(path, stats, files, state, done) {
     done();
 }
 
