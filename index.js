@@ -98,7 +98,7 @@ function _explore(start, callfile, calldir, options, done) {
             return;
         }
 
-        if (stats.isSymbolicLink() && (options.followLink === true || options.resolve !== false)) {
+        if (stats.isSymbolicLink() && (options.followSymlink === true || options.resolve !== false)) {
             linkStats = stats;
             fs.realpath(start, function(err, resolvedPath) {
                 if (err) {
@@ -135,7 +135,7 @@ function __doExplore(start, callfile, calldir, options, stats, linkStats, take, 
 
     stats = linkStats || stats;
 
-    if (stats.isSymbolicLink() && options.followLink !== true) {
+    if (stats.isSymbolicLink() && options.followSymlink !== true) {
         calldir(start, linkStats || stats, [], 'end', give);
         return;
     }

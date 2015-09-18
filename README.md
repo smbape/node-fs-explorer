@@ -18,4 +18,16 @@
  * @param  {Object}     options  options.resolve[=true] => resolve symlink; options.followSymlink => explore symlink if directory
  * @param  {Function}   done     called when there are no more file nor folders to read
  */
+var explore = require('fs-explorer').explore;
+explore('/path/to/dir', function(path, stats, next) {
+    console.log('file', path);
+    next();
+}, function(path, stats, files, state, next) {
+    if (state === 'end') {
+        console.log('directory', path);
+    }
+    next();
+}, {followSymlink: true}, function(err) {
+    console.log('done', err);
+});
 ```

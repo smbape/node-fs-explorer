@@ -221,7 +221,7 @@ describe 'fs explorer', ->
                 chaiDir = sysPath.resolve __dirname + '/../node_modules/chai/lib/chai'
                 fs.symlink chaiDir, link, 'junction', (err)->
                     return tearDown(err) if err
-                    assertFilesExist dir, files, dirs, {followLink: true}, (err)->
+                    assertFilesExist dir, files, dirs, {followSymlink: true}, (err)->
                         fs.unlink link, (_err)->
                             console.error(_err) if _err
                             tearDown(err)
