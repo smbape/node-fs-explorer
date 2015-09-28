@@ -1,3 +1,7 @@
+fs-explorer
+=======
+Explore a file or a directory
+
 ```javascript
 /**
  * Explore a file or a directory. i.e. stats
