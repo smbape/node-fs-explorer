@@ -1,0 +1,51 @@
+* text=auto
+*.bat text
+*.c text
+*.cmd text
+*.cnf text
+*.conf text
+*.coffee text
+*.cer text eol=lf
+*.cpp text
+*.crt text eol=lf
+*.css text
+*.eot binary
+*.gif binary
+*.h text
+*.hbs text
+*.htm text
+*.html text
+*.ico binary
+*.inc text
+*.ini text
+*.info text
+*.install text
+*.java text
+*.jpeg binary
+*.jpg binary
+*.js text
+*.json text
+*.jsp text
+*.less text
+*.md text
+*.module text
+*.patch text eol=lf
+*.php5 text
+*.php text
+*.pl text
+*.pm text
+*.png binary
+*.py text
+*.scss text
+*.sh text eol=lf
+*.sql text
+*.styl text
+*.tpl text
+*.ttf binary
+*.txt text
+*.woff binary
+*.xcf binary
+*.xml text
+LICENSE text
+Makefile text
+package.json text eol=lf
