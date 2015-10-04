@@ -1,16 +1,27 @@
 {
   "name": "fs-explorer",
   "version": "1.0.0",
-  "description": "Explore directory",
+  "description": "Explore file system",
   "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
   "scripts": {
     "test": "node ./node_modules/mocha/bin/_mocha --full-trace --compilers coffee:coffee-script/register --require test/common.coffee"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smbape/node-fs-explorer"
   },
   "keywords": [
     "explorer"
   ],
   "author": "Stéphane MBAPE",
   "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/smbape/node-fs-explorer/issues"
+  },
+  "homepage": "https://github.com/smbape/node-fs-explorer",
   "devDependencies": {
     "chai": "^3.2.0",
     "coffee-script": "^1.10.0",
