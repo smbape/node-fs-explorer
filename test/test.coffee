@@ -1,7 +1,6 @@
 explorer = require '../'
 sysPath = require 'path'
 fs = require 'fs'
-mkdirp = require 'mkdirp'
 async = require 'async'
 
 assertFilesExist = (dir, files, dirs, options, next) ->
