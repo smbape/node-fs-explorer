@@ -17,8 +17,8 @@ Explore a file or a directory
  * If you want fast reading, call next before processing the file or folder
  * If you want listing control, call next after you processed the file or folder
  * @param  {String}     start    File or folder to read
- * @param  {Function}   callfile called every time a file is encounter with (path[relative to initial start], stats, next)
- * @param  {Function}   calldir  called every time a folder is encounter with (path[relative to initial start], stats, files, 'start|end', next)
+ * @param  {Function}   callfile called every time a file is encounter with (path, stats, next)
+ * @param  {Function}   calldir  called every time a folder is encounter with (path, stats, files, 'start|end', next)
  * @param  {Object}     options  options.resolve[=true] => resolve symlink; options.followSymlink => explore symlink if directory
  * @param  {Function}   done     called when there are no more file nor folders to read
  */
