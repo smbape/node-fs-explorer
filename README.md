@@ -8,7 +8,9 @@ Explore a file or a directory
  * Usage
  *     explore(String start, Function callfile)
  *     explore(String start, Function callfile, Function done)
+ *     explore(String start, Function callfile, Object options)
  *     explore(String start, Function callfile, Function calldir, Function done)
+ *     explore(String start, Function callfile, Function calldir, Object options)
  *     explore(String start, Function callfile, Object options, Function done)
  *     explore(String start, Function callfile, Function calldir, Object options, Function done)
  * 

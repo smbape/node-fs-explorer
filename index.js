@@ -13,7 +13,9 @@ module.exports = {
  * Usage
  *     explore(String start, Function callfile)
  *     explore(String start, Function callfile, Function done)
+ *     explore(String start, Function callfile, Object options)
  *     explore(String start, Function callfile, Function calldir, Function done)
+ *     explore(String start, Function callfile, Function calldir, Object options)
  *     explore(String start, Function callfile, Object options, Function done)
  *     explore(String start, Function callfile, Function calldir, Object options, Function done)
  * 
@@ -30,16 +32,32 @@ module.exports = {
 function explore(start, callfile, calldir, options, done) {
     var argsLen = arguments.length;
 
-    if (argsLen < 2) {
-        throw new Error('Too few arguments');
-    } else if (argsLen === 3) {
-        done = calldir;
-        calldir = null;
-    } else if (argsLen === 4) {
-        if (isFunction(options)) {
-            done = options;
-            options = null;
-        }
+    switch (argsLen) {
+        case 0:
+        case 1:
+            throw new Error('Too few arguments');
+        case 2:
+            break;
+        case 3:
+            if (isFunction(calldir)) {
+                done = calldir;
+            } else if (isObject(calldir)) {
+                options = calldir;
+            }
+            calldir = null;
+            break;
+        case 4:
+            if (isFunction(options)) {
+                done = options;
+                options = null;
+            }
+
+            if (isObject(calldir)) {
+                options = calldir;
+                calldir = null;
+            }
+            break;
+
     }
 
     if (!isFunction(callfile)) {
@@ -190,21 +208,10 @@ function nextDirectoryFn(path, stats, files, state, done) {
 
 function emptyFn() {}
 
-// ==============
-// From lodash
-// ==============
-var objToString = Object.prototype.toString
-
 function isObject(value) {
-    // Avoid a V8 JIT bug in Chrome 19-20.
-    // See https://code.google.com/p/v8/issues/detail?id=2291 for more details.
-    var type = typeof value;
-    return !!value && (type === 'object' || type === 'function');
+    return value && (typeof value === 'object');
 }
 
 function isFunction(value) {
-    // The use of `Object#toString` avoids issues with the `typeof` operator
-    // in older versions of Chrome and Safari which return 'function' for regexes
-    // and Safari 8 which returns 'object' for typed array constructors.
-    return isObject(value) && objToString.call(value) === '[object Function]';
+    return typeof value === 'function';
 }
