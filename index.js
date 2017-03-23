@@ -24,8 +24,8 @@ module.exports = {
  * If you want fast reading, call next before processing the file or folder
  * If you want listing control, call next after you processed the file or folder
  * @param  {String}     start    File or folder to read
- * @param  {Function}   callfile called every time a file is encounter with (path, stats, next)
- * @param  {Function}   calldir  called every time a folder is encounter with (path, stats, files, 'begin|end', next). To skip folder, call next(null, true) on begin
+ * @param  {Function}   callfile called every time a file is encountered with (path, stats, next)
+ * @param  {Function}   calldir  called every time a folder is encountered with (path, stats, files, 'begin|end', next). To skip folder, call next(null, true) on begin
  * @param  {Object}     options  options.resolve[=true] => resolve symlink; options.followSymlink => explore symlink if directory
  * @param  {Function}   done     called when there are no more file nor folders to read
  */
@@ -89,8 +89,8 @@ function explore(start, callfile, calldir, options, done) {
  * If you want fast reading, call next before processing the file or folder
  * If you want listing control, call next after you processed the file or folder
  * @param  {String}     start    File or folder to read
- * @param  {Function}   callfile called every time a file is encounter with (path, stats, next)
- * @param  {Function}   calldir  called every time a folder is encounter with (path, stats, files, 'begin|end', next)To skip folder, call next(null, true) on begin
+ * @param  {Function}   callfile called every time a file is encountered with (path, stats, next)
+ * @param  {Function}   calldir  called every time a folder is encountered with (path, stats, files, 'begin|end', next)To skip folder, call next(null, true) on begin
  * @param  {Object}     options  options.resolve[=true] => resolve symlink; options.followSymlink => explore symlink if directory
  * @param  {Function}   done     called when there are no more file nor folders to read
  */
