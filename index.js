@@ -146,6 +146,11 @@ function __doExplore(start, callfile, calldir, options, stats, linkStats, take, 
         return;
     }
 
+    if (stats.isSymbolicLink() && options.followSymlink === false) {
+        callfile(start, stats, give);
+        return;
+    }
+
     if (!stats.isDirectory()) {
         give(new Error('Not a File nor a directory ' + start));
         return;
@@ -182,13 +187,13 @@ function __doExplore(start, callfile, calldir, options, stats, linkStats, take, 
             _explore(sysPath.join(start, files[_i]), callfile, calldir, options, iterate);
         }
 
-        function iterate(err, skip) {
+        function iterate(err) {
             if (err) {
                 give(err);
                 return;
             }
 
-            if (skip || ++_i === _len) {
+            if (++_i === _len) {
                 calldir(start, stats, files, 'end', give);
                 return;
             }
