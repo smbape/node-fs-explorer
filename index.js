@@ -1,11 +1,10 @@
-'use strict';
-
-var fs = require('fs'),
-    sysPath = require('path');
-
-module.exports = {
-    explore: explore,
-    _explore: _explore
+const fs = require("fs");
+const sysPath = require("path");
+const emptyFn = Function.prototype;
+const defaultOptions = {
+    fs,
+    resolve: true,
+    followSymlink: false
 };
 
 /**
@@ -18,7 +17,7 @@ module.exports = {
  *     explore(String start, Function callfile, Function calldir, Object options)
  *     explore(String start, Function callfile, Object options, Function done)
  *     explore(String start, Function callfile, Function calldir, Object options, Function done)
- * 
+ *
  * Calling next with err cancels the reading
  * Not calling next will make the process hang forever
  * If you want fast reading, call next before processing the file or folder
@@ -26,16 +25,16 @@ module.exports = {
  * @param  {String}     start    File or folder to read
  * @param  {Function}   callfile called every time a file is encountered with (path, stats, next)
  * @param  {Function}   calldir  called every time a folder is encountered with (path, stats, files, 'begin|end', next). To skip folder, call next(null, true) on begin
- * @param  {Object}     options  options.resolve[=true] => resolve symlink; options.followSymlink => explore symlink if directory
+ * @param  {Object}     options  options.resolve[=true] => resolve symlink; options.followSymlink[=false] => explore symlink if directory
  * @param  {Function}   done     called when there are no more file nor folders to read
  */
 function explore(start, callfile, calldir, options, done) {
-    var argsLen = arguments.length;
+    const argsLen = arguments.length;
 
     switch (argsLen) {
         case 0:
         case 1:
-            throw new Error('Too few arguments');
+            throw new Error("Too few arguments");
         case 2:
             break;
         case 3:
@@ -57,14 +56,15 @@ function explore(start, callfile, calldir, options, done) {
                 calldir = null;
             }
             break;
-
+        default:
+            // Nothing to do
     }
 
     if (!isFunction(callfile)) {
-        throw new Error('callfile must be a function');
+        throw new Error("callfile must be a function");
     }
 
-    isObject(options) || (options = {});
+    options = Object.assign({}, defaultOptions, options);
 
     if (!isFunction(callfile)) {
         callfile = nextFileFn;
@@ -83,7 +83,7 @@ function explore(start, callfile, calldir, options, done) {
 
 /**
  * Explore a file or a directory with no checking of paramters correctness
- * 
+ *
  * Calling next with err cancels the reading
  * Not calling next will make the process hang forever
  * If you want fast reading, call next before processing the file or folder
@@ -95,7 +95,9 @@ function explore(start, callfile, calldir, options, done) {
  * @param  {Function}   done     called when there are no more file nor folders to read
  */
 function _explore(start, callfile, calldir, options, done) {
-    var count = 0;
+    const {fs, followSymlink, resolve} = options;
+
+    let count = 0;
 
     function take() {
         ++count;
@@ -109,22 +111,22 @@ function _explore(start, callfile, calldir, options, done) {
 
     // Start process
     take();
-    fs.lstat(start, function(err, stats) {
-        var linkStats;
+    fs[resolve ? "lstat" : "stat"](start, (err, stats) => {
+        let linkStats;
         if (err) {
             give(err);
             return;
         }
 
-        if (stats.isSymbolicLink() && (options.followSymlink === true || options.resolve !== false)) {
+        if (stats.isSymbolicLink() && (followSymlink || resolve)) {
             linkStats = stats;
-            fs.realpath(start, function(err, resolvedPath) {
+            fs.realpath(start, (err, resolvedPath) => {
                 if (err) {
                     give(err);
                     return;
                 }
 
-                fs.lstat(resolvedPath, function(err, stats) {
+                fs.lstat(resolvedPath, (err, stats) => {
                     if (err) {
                         // invalid symlink
                         callfile(start, stats, give);
@@ -141,37 +143,39 @@ function _explore(start, callfile, calldir, options, done) {
 }
 
 function __doExplore(start, callfile, calldir, options, stats, linkStats, take, give) {
+    const {fs, followSymlink} = options;
+
     if (stats.isFile()) {
         callfile(start, linkStats || stats, give);
         return;
     }
 
-    if (stats.isSymbolicLink() && options.followSymlink === false) {
+    if (stats.isSymbolicLink() && !followSymlink) {
         callfile(start, stats, give);
         return;
     }
 
     if (!stats.isDirectory()) {
-        give(new Error('Not a File nor a directory ' + start));
+        give(new Error(`Not a File nor a directory ${ start }`));
         return;
     }
 
     stats = linkStats || stats;
 
-    if (stats.isSymbolicLink() && options.followSymlink !== true) {
-        calldir(start, linkStats || stats, [], 'end', give);
+    if (stats.isSymbolicLink() && !followSymlink) {
+        calldir(start, linkStats || stats, [], "end", give);
         return;
     }
 
-    fs.readdir(start, function(err, files) {
-        var _i = 0,
-            _len = files.length;
+    fs.readdir(start, (err, files) => {
+        let index = 0;
+        const len = files.length;
         if (err) {
             give(err);
             return;
         }
 
-        calldir(start, stats, files, 'begin', next);
+        calldir(start, stats, files, "begin", next);
 
         function next(err, skip) {
             if (err) {
@@ -180,11 +184,11 @@ function __doExplore(start, callfile, calldir, options, stats, linkStats, take, 
             }
 
             if (skip || files.length === 0) {
-                calldir(start, stats, files, 'end', give);
+                calldir(start, stats, files, "end", give);
                 return;
             }
 
-            _explore(sysPath.join(start, files[_i]), callfile, calldir, options, iterate);
+            _explore(sysPath.join(start, files[index]), callfile, calldir, options, iterate);
         }
 
         function iterate(err) {
@@ -193,12 +197,12 @@ function __doExplore(start, callfile, calldir, options, stats, linkStats, take, 
                 return;
             }
 
-            if (++_i === _len) {
-                calldir(start, stats, files, 'end', give);
+            if (++index === len) {
+                calldir(start, stats, files, "end", give);
                 return;
             }
 
-            _explore(sysPath.join(start, files[_i]), callfile, calldir, options, iterate);
+            _explore(sysPath.join(start, files[index]), callfile, calldir, options, iterate);
         }
     });
 }
@@ -211,12 +215,15 @@ function nextDirectoryFn(path, stats, files, state, done) {
     done();
 }
 
-function emptyFn() {}
-
 function isObject(value) {
-    return value && (typeof value === 'object');
+    return value && (typeof value === "object");
 }
 
 function isFunction(value) {
-    return typeof value === 'function';
+    return typeof value === "function";
 }
+
+module.exports = {
+    explore,
+    _explore
+};

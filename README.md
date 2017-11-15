@@ -13,7 +13,7 @@ Explore a file or a directory
  *     explore(String start, Function callfile, Function calldir, Object options)
  *     explore(String start, Function callfile, Object options, Function done)
  *     explore(String start, Function callfile, Function calldir, Object options, Function done)
- * 
+ *
  * Calling next with err cancels the reading
  * Not calling next will make the process hang forever
  * If you want fast reading, call next before processing the file or folder
@@ -21,7 +21,7 @@ Explore a file or a directory
  * @param  {String}     start    File or folder to read
  * @param  {Function}   callfile called every time a file is encountered with (path, stats, next)
  * @param  {Function}   calldir  called every time a folder is encountered with (path, stats, files, 'begin|end', next). To skip folder, call next(null, true) on begin
- * @param  {Object}     options  options.resolve[=true] => resolve symlink; options.followSymlink => explore symlink if directory
+ * @param  {Object}     options  options.resolve[=true] => resolve symlink; options.followSymlink[=false] => explore symlink if directory; options.fs[=require("fs")]
  * @param  {Function}   done     called when there are no more file nor folders to read
  */
 var explore = require('fs-explorer').explore;
