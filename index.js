@@ -111,7 +111,7 @@ function _explore(start, callfile, calldir, options, done) {
 
     // Start process
     take();
-    fs[resolve ? "lstat" : "stat"](start, (err, stats) => {
+    fs.lstat(start, (err, stats) => {
         let linkStats;
         if (err) {
             give(err);
