@@ -1,4 +1,6 @@
-node_modules
-test
+/.gitattributes
+/node_modules
+/test
+/project.sublime-project
 /project.sublime-workspace
 /package-lock.json

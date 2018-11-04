@@ -7,7 +7,8 @@
     "test": "test"
   },
   "scripts": {
-    "test": "node ./node_modules/mocha/bin/_mocha --full-trace --compilers coffee:coffee-script/register --require test/common.coffee"
+    "prepublishOnly": "npm run test",
+    "test": "node ./node_modules/mocha/bin/_mocha --full-trace --require coffee-script/register test/*"
   },
   "repository": {
     "type": "git",

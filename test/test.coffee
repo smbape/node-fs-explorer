@@ -1,3 +1,4 @@
+{ assert } = require 'chai'
 explorer = require '../'
 sysPath = require 'path'
 fs = require 'fs'
@@ -21,9 +22,13 @@ assertFilesExist = (dir, files, dirs, options, next) ->
             files[idx] = sysPath.join dir, _file
         return
 
+    seen_files = {}
     argv[1] = callfile = (path, stats, next) ->
-        if ~(idx = files.indexOf path)
+        if (idx = files.indexOf path) isnt -1
+            seen_files[path] = 1
             files.splice idx, 1
+        else if seen_files[path]
+            next new Error("explored file '#{ path }' twice")
         next()
         return
 
@@ -33,10 +38,14 @@ assertFilesExist = (dir, files, dirs, options, next) ->
                 dirs[idx] = sysPath.join dir, _dir
             return
 
+        seen_dirs = {}
         argv[2] = calldir = (path, stats, files, state, next)->
             if state is 'end'
-                if ~(idx = dirs.indexOf path)
+                if (idx = dirs.indexOf path) isnt -1
+                    seen_dirs[path] = 1
                     dirs.splice idx, 1
+                else if seen_dirs[path]
+                    next new Error("explored directory '#{ path }' twice")
             next()
             return
 

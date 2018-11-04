@@ -2,7 +2,24 @@
 	"folders":
 	[
 		{
-			"path": "."
+			"path": ".",
+			"binary_file_patterns": [
+				"*.jpg",
+				"*.jpeg",
+				"*.png",
+				"*.gif",
+				"*.gz",
+				"*.ttf",
+				"*.tga",
+				"*.dds",
+				"*.ico",
+				"*.eot",
+				"*.pdf",
+				"*.swf",
+				"*.jar",
+				"*.zip",
+				"node_modules/**"
+			]
 		}
 	]
 }
