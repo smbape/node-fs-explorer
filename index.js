@@ -142,63 +142,64 @@ function _explore(start, callfile, calldir, options, done) {
     });
 }
 
-function __doExplore(start, callfile, calldir, options, stats, linkStats, take, give) {
+function __doExplore(start, callfile, calldir, options, stats, linkStats, take, cb) {
     const {fs, followSymlink} = options;
 
     if (stats.isFile()) {
-        callfile(start, linkStats || stats, give);
+        callfile(start, linkStats || stats, cb);
         return;
     }
 
     if (stats.isSymbolicLink() && !followSymlink) {
-        callfile(start, stats, give);
+        callfile(start, stats, cb);
         return;
     }
 
     if (!stats.isDirectory()) {
-        give(new Error(`Not a File nor a directory ${ start }`));
+        cb(new Error(`Not a File nor a directory ${ start }`));
         return;
     }
 
     stats = linkStats || stats;
 
     if (stats.isSymbolicLink() && !followSymlink) {
-        calldir(start, linkStats || stats, [], "end", give);
+        calldir(start, linkStats || stats, [], "end", cb);
         return;
     }
 
     fs.readdir(start, (err, files) => {
-        let index = 0;
-        const len = files.length;
         if (err) {
-            give(err);
+            cb(err);
             return;
         }
 
-        calldir(start, stats, files, "begin", next);
+        let index = 0;
+        let len;
 
-        function next(err, skip) {
+        calldir(start, stats, files, "begin", (err, skip) => {
             if (err) {
-                give(err);
+                cb(err);
                 return;
             }
 
-            if (skip || files.length === 0) {
-                calldir(start, stats, files, "end", give);
+            len = files.length;
+
+            if (skip || len === 0) {
+                calldir(start, stats, files, "end", cb);
                 return;
             }
 
             _explore(sysPath.join(start, files[index]), callfile, calldir, options, iterate);
-        }
+        });
 
         function iterate(err) {
             if (err) {
-                give(err);
+                cb(err);
                 return;
             }
 
             if (++index === len) {
-                calldir(start, stats, files, "end", give);
+                calldir(start, stats, files, "end", cb);
                 return;
             }
 
