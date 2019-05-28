@@ -28,5 +28,8 @@
     "chai": "^3.2.0",
     "coffee-script": "^1.10.0",
     "mocha": "^5.2.0"
+  },
+  "dependencies": {
+    "sem-lib": "^2.4.0"
   }
 }

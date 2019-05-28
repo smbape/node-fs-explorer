@@ -1,5 +1,7 @@
 const fs = require("fs");
 const sysPath = require("path");
+const {Semaphore} = require("sem-lib");
+
 const emptyFn = Function.prototype;
 const defaultOptions = {
     fs,
@@ -65,6 +67,13 @@ function explore(start, callfile, calldir, options, done) {
     }
 
     options = Object.assign({}, defaultOptions, options);
+
+    if (isNaN(options.limit) || options.limit <= 0) {
+        options.limit = 1;
+    }
+
+    options.scheduler = new Semaphore(options.limit, true, 0, true);
+    delete options.limit;
 
     if (!isFunction(callfile)) {
         callfile = nextFileFn;
@@ -173,38 +182,39 @@ function __doExplore(start, callfile, calldir, options, stats, linkStats, take, 
             return;
         }
 
-        let index = 0;
-        let len;
-
         calldir(start, stats, files, "begin", (err, skip) => {
             if (err) {
                 cb(err);
                 return;
             }
 
-            len = files.length;
-
-            if (skip || len === 0) {
+            if (skip || files.length === 0) {
                 calldir(start, stats, files, "end", cb);
                 return;
             }
 
-            _explore(sysPath.join(start, files[index]), callfile, calldir, options, iterate);
+            const scheduler = options.scheduler instanceof Semaphore ? options.scheduler : new Semaphore(1, true, 0, true);
+
+            // a directory is not marked as finished until all its files/folders has been explored
+            // therefore, there will be cases were parent exploration will block child exploration
+            // to avoid that, ignore blocking tasks while exploring a directory
+            scheduler.setCapacity(scheduler.getCapacity() + 1);
+
+            // deeper files have higher priority
+            scheduler.schedule(files, -start.split(sysPath.sep).length, (file, i, next) => {
+                _explore(sysPath.join(start, file), callfile, calldir, options, next);
+            }, err => {
+                scheduler.setCapacity(scheduler.getCapacity() - 1);
+
+                if (err) {
+                    cb(err);
+                } else {
+                    calldir(start, stats, files, "end", cb);
+                }
+            });
+
+            scheduler.semGive();
         });
-
-        function iterate(err) {
-            if (err) {
-                cb(err);
-                return;
-            }
-
-            if (++index === len) {
-                calldir(start, stats, files, "end", cb);
-                return;
-            }
-
-            _explore(sysPath.join(start, files[index]), callfile, calldir, options, iterate);
-        }
     });
 }
 
