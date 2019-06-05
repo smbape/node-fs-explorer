@@ -194,17 +194,19 @@ function __doExplore(start, callfile, calldir, options, stats, linkStats, take, 
             }
 
             const scheduler = options.scheduler instanceof Semaphore ? options.scheduler : new Semaphore(1, true, 0, true);
-
-            // a directory is not marked as finished until all its files/folders has been explored
-            // therefore, there will be cases were parent exploration will block child exploration
-            // to avoid that, ignore blocking tasks while exploring a directory
-            scheduler.setCapacity(scheduler.getCapacity() + 1);
+            const hasTaken = scheduler.getNumTokens() !== scheduler.getCapacity();
 
             // deeper files have higher priority
             scheduler.schedule(files, -start.split(sysPath.sep).length, (file, i, next) => {
                 _explore(sysPath.join(start, file), callfile, calldir, options, next);
             }, err => {
-                scheduler.setCapacity(scheduler.getCapacity() - 1);
+                // take the given token back
+                // so that it will be re-given by the scheduler
+                if (hasTaken) {
+                    scheduler.semTake({
+                        priority: Number.NEGATIVE_INFINITY
+                    });
+                }
 
                 if (err) {
                     cb(err);
@@ -213,7 +215,11 @@ function __doExplore(start, callfile, calldir, options, stats, linkStats, take, 
                 }
             });
 
-            scheduler.semGive();
+            // give the taken token for this task back
+            // so that children exploration does not get stuck
+            if (hasTaken) {
+                scheduler.semGive();
+            }
         });
     });
 }
