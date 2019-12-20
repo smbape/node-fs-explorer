@@ -5,6 +5,7 @@ const {Semaphore} = require("sem-lib");
 const emptyFn = Function.prototype;
 const defaultOptions = {
     fs,
+    path: sysPath,
     resolve: true,
     followSymlink: false
 };
@@ -27,7 +28,12 @@ const defaultOptions = {
  * @param  {String}     start    File or folder to read
  * @param  {Function}   callfile called every time a file is encountered with (path, stats, next)
  * @param  {Function}   calldir  called every time a folder is encountered with (path, stats, files, 'begin|end', next). To skip folder, call next(null, true) on begin
- * @param  {Object}     options  options.resolve[=true] => resolve symlink; options.followSymlink[=false] => explore symlink if directory
+ * @param  {Object}     options
+ *                         resolve[=true]           resolve symlink
+ *                         followSymlink[=false]    explore symlink if directory
+ *                         limit[=1]                explore multiple paths at time, thus reducing exploration time
+ *                         fs[=require("fs")]       filesystem to explore (lstat and readdir methods are used)
+ *                         path[=require("path")]   filesystem path. Usually one of {posix, win32} = require("path")
  * @param  {Function}   done     called when there are no more file nor folders to read
  */
 function explore(start, callfile, calldir, options, done) {
@@ -152,7 +158,7 @@ function _explore(start, callfile, calldir, options, done) {
 }
 
 function __doExplore(start, callfile, calldir, options, stats, linkStats, take, cb) {
-    const {fs, followSymlink} = options;
+    const {fs, path: sysPath, followSymlink} = options;
 
     if (stats.isFile()) {
         callfile(start, linkStats || stats, cb);

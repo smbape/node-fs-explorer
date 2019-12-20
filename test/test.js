@@ -3,6 +3,8 @@ const sysPath = require("path");
 const {assert} = require("chai");
 const {explore} = require("../");
 const series = require("async/series");
+const eachOfLimit = require("async/eachOfLimit");
+const waterfall = require("async/waterfall");
 
 const assertFilesExist = function(dirname, files, dirs, options, cb) {
     const argv = [dirname];
@@ -52,7 +54,7 @@ const assertFilesExist = function(dirname, files, dirs, options, cb) {
         const seen_dirs = {};
 
         // calldir
-        argv[2] = (path, stats, files, state, next) => {
+        argv[2] = (path, stats, dir_files, state, next) => {
             if (state === "end") {
                 if (seen_dirs[path]) {
                     next(new Error(`explored directory '${ path }' twice`));
@@ -138,9 +140,7 @@ describe(require("../package").name, () => {
         ], cb);
     });
 
-    it("should follow symlink", function(cb) {
-        this.timeout(5 * 60 * 1000);
-
+    it("should follow symlink", cb => {
         const dir = sysPath.join(__dirname, "dir");
         const sub = "chai"; // link
         const link = sysPath.join(dir, sub);
@@ -300,12 +300,12 @@ describe(require("../package").name, () => {
             if (state === "begin") {
                 try {
                     assert.deepEqual(files.filter(file => expected.indexOf(file) !== -1).sort(), expected);
-                } catch(err) {
+                } catch (err) {
                     next(err);
                     return;
                 }
 
-                for (var i = files.length - 1; i >= 0; i--) {
+                for (let i = files.length - 1; i >= 0; i--) {
                     if (files[i][0] === "_") {
                         files.splice(i, 1);
                     }
@@ -316,7 +316,7 @@ describe(require("../package").name, () => {
             if (!err) {
                 try {
                     assert.strictEqual(filtered.length, 0);
-                } catch(err) {
+                } catch (err) {
                     cb(err);
                     return;
                 }
@@ -325,4 +325,127 @@ describe(require("../package").name, () => {
         });
     });
 
+    if (process.env.FS_EXPLORER_REMOTE_TEST) {
+        it("should explore a remote directory", function(cb) {
+            this.timeout(5000);
+
+            const remoteDir = ".FS_EXPLORER_REMOTE_TEST";
+            const remoteBaseIndex = remoteDir.length + 1;
+
+            const {posix: remoteSysPath} = require("path");
+            const {Client} = require("ssh2");
+
+            const expectedDirs = [
+                "",
+                "dir1",
+                "dir2",
+                "dir3",
+            ];
+
+            const expectedFiles = [
+                "file",
+                remoteSysPath.join("dir1", "file"),
+                remoteSysPath.join("dir2", "file"),
+                remoteSysPath.join("dir3", "file"),
+            ];
+
+            const files = expectedFiles.slice();
+            const dirs = expectedDirs.slice();
+
+            const client = new Client();
+
+            client.on("error", cb);
+
+            client.on("ready", () => {
+                let sftp;
+
+                waterfall([
+                    next => {
+                        client.sftp(next);
+                    },
+
+                    (_sftp, next) => {
+                        sftp = _sftp;
+                        eachOfLimit(expectedDirs, 1, (path, index, next) => {
+                            sftp.mkdir(remoteSysPath.join(remoteDir, path), next);
+                        }, next);
+                    },
+
+                    next => {
+                        eachOfLimit(expectedFiles, 1, (path, index, next) => {
+                            const writable = sftp.createWriteStream(remoteSysPath.join(remoteDir, path));
+                            writable.on("error", next);
+                            writable.on("finish", next);
+                            writable.write("text");
+                            writable.end();
+                        }, next);
+                    },
+
+                    next => {
+                        explore(remoteDir, (path, stats, next) => {
+                            const idx = files.indexOf(path.slice(remoteBaseIndex));
+                            if (idx !== -1) {
+                                files.splice(idx, 1);
+                            }
+                            next();
+                        }, (path, stats, remoteFiles, state, next) => {
+                            if (state === "begin") {
+                                // sftp.readdir return a list of objects instead of a list of string as expected by fs-explorer
+                                // transform the list of object files into a list of string
+                                remoteFiles.forEach((file, i) => {
+                                    if (file !== null && typeof file === "object" && typeof file.filename === "string") {
+                                        remoteFiles[i] = file.filename;
+                                    }
+                                });
+
+                                const baseDir = path.slice(remoteBaseIndex);
+
+                                const idx = dirs.indexOf(baseDir);
+                                if (idx !== -1) {
+                                    dirs.splice(idx, 1);
+                                }
+                            }
+                            next();
+                        }, {
+                            fs: sftp,
+                            path: remoteSysPath,
+                            limit: 8
+                        }, next);
+                    },
+
+                    next => {
+                        eachOfLimit(expectedFiles, 1, (path, index, next) => {
+                            sftp.unlink(remoteSysPath.join(remoteDir, path), next);
+                        }, next);
+                    },
+
+                    next => {
+                        eachOfLimit(expectedDirs.reverse(), 1, (path, index, next) => {
+                            sftp.rmdir(remoteSysPath.join(remoteDir, path), next);
+                        }, next);
+                    }
+                ], err => {
+                    client.end();
+
+                    if (!err) {
+                        try {
+                            assert.strictEqual(files.length, 0);
+                            assert.strictEqual(dirs.length, 0);
+                        } catch ( error ) {
+                            err = error;
+                        }
+                    }
+
+                    cb(err);
+                });
+            });
+
+            client.connect({
+                host: process.env.SSH_HOST || "127.0.0.1",
+                port: process.env.SSH_PORT ? parseInt(process.env.SSH_PORT, 10) : 22,
+                username: process.env.SSH_USERNAME || "anonymous",
+                agent: process.env.SSH_AUTH_SOCK || (process.platform === "win32" ? "pageant" : undefined),
+            });
+        });
+    }
 });

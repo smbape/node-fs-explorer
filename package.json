@@ -26,7 +26,8 @@
   "devDependencies": {
     "async": "^3.1.0",
     "chai": "^3.2.0",
-    "mocha": "^5.2.0"
+    "mocha": "^5.2.0",
+    "ssh2": "^0.8.7"
   },
   "dependencies": {
     "sem-lib": "^2.5.6"
