@@ -261,6 +261,36 @@ describe(require("../package").name, () => {
                     next();
                 });
             },
+
+            next => {
+                explore(link, (path, stats, next) => {
+                    try {
+                        assert.strictEqual(stats.isSymbolicLink(), true);
+                    } catch ( err ) {
+                        next(err);
+                        return;
+                    }
+                    next();
+                }, (path, stats, files, state, next) => {
+                    next(new Error("Should not resolve link to folder"));
+                }, { resolve: false }, next);
+            },
+
+            next => {
+                explore(link, (path, stats, next) => {
+                    next(new Error("Should resolve link to folder"));
+                }, (path, stats, files, state, next) => {
+                    try {
+                        assert.strictEqual(state, "end");
+                        assert.strictEqual(files.length, 0);
+                        assert.strictEqual(stats.isSymbolicLink(), true);
+                    } catch ( err ) {
+                        next(err);
+                        return;
+                    }
+                    next();
+                }, { resolve: true }, next);
+            }
         ], err => {
             series([
                 next => {
@@ -390,7 +420,7 @@ describe(require("../package").name, () => {
                             next();
                         }, (path, stats, remoteFiles, state, next) => {
                             if (state === "begin") {
-                                // sftp.readdir return a list of objects instead of a list of string as expected by fs-explorer
+                                // sftp.readdir returns a list of objects instead of a list of string as expected by fs-explorer
                                 // transform the list of object files into a list of string
                                 remoteFiles.forEach((file, i) => {
                                     if (file !== null && typeof file === "object" && typeof file.filename === "string") {

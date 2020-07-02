@@ -1,11 +1,10 @@
-const fs = require("fs");
-const sysPath = require("path");
 const {Semaphore} = require("sem-lib");
 
 const emptyFn = Function.prototype;
+
 const defaultOptions = {
-    fs,
-    path: sysPath,
+    fs: require("fs"),
+    path: require("path"),
     resolve: true,
     followSymlink: false
 };
@@ -110,79 +109,62 @@ function explore(start, callfile, calldir, options, done) {
  * @param  {Function}   done     called when there are no more file nor folders to read
  */
 function _explore(start, callfile, calldir, options, done) {
-    const {fs, followSymlink, resolve} = options;
+    const {fs: sysFs, followSymlink, resolve} = options;
 
-    let count = 0;
-
-    function take() {
-        ++count;
-    }
-
-    function give(err) {
-        if (--count === 0 || err) {
-            done(err);
-        }
-    }
-
-    // Start process
-    take();
-    fs.lstat(start, (err, stats) => {
-        let linkStats;
+    sysFs.lstat(start, (err, stats) => {
         if (err) {
-            give(err);
+            done(err);
             return;
         }
 
-        if (stats.isSymbolicLink() && (followSymlink || resolve)) {
-            linkStats = stats;
-            fs.realpath(start, (err, resolvedPath) => {
+        if (!stats.isSymbolicLink() || (!followSymlink && !resolve)) {
+            __doExplore(start, callfile, calldir, options, stats, stats, done);
+            return;
+        }
+
+        sysFs.realpath(start, (err, realpath) => {
+            if (err) {
+                done(err);
+                return;
+            }
+
+            sysFs.lstat(realpath, (err, realStats) => {
                 if (err) {
-                    give(err);
+                    // invalid symlink
+                    callfile(start, realStats, done);
                     return;
                 }
 
-                fs.lstat(resolvedPath, (err, stats) => {
-                    if (err) {
-                        // invalid symlink
-                        callfile(start, stats, give);
-                        return;
-                    }
-
-                    __doExplore(start, callfile, calldir, options, stats, linkStats, take, give);
-                });
+                __doExplore(start, callfile, calldir, options, realStats, stats, done);
             });
-        } else {
-            __doExplore(start, callfile, calldir, options, stats, linkStats, take, give);
-        }
+        });
     });
 }
 
-function __doExplore(start, callfile, calldir, options, stats, linkStats, take, cb) {
-    const {fs, path: sysPath, followSymlink} = options;
+function __doExplore(start, callfile, calldir, options, realStats, stats, cb) {
+    const {fs: sysFs, path: sysPath, followSymlink, resolve} = options;
 
-    if (stats.isFile()) {
-        callfile(start, linkStats || stats, cb);
-        return;
-    }
-
-    if (stats.isSymbolicLink() && !followSymlink) {
+    if (realStats.isFile()) {
         callfile(start, stats, cb);
         return;
     }
 
-    if (!stats.isDirectory()) {
+    if (realStats.isSymbolicLink() && !followSymlink) {
+        callfile(start, stats, cb);
+        return;
+    }
+
+    if (!realStats.isDirectory()) {
         cb(new Error(`Not a File nor a directory ${ start }`));
         return;
     }
 
-    stats = linkStats || stats;
-
     if (stats.isSymbolicLink() && !followSymlink) {
-        calldir(start, linkStats || stats, [], "end", cb);
+        calldir(start, stats, [], "end", cb);
         return;
     }
 
-    fs.readdir(start, (err, files) => {
+    sysFs.readdir(start, (err, files) => {
         if (err) {
             cb(err);
             return;
@@ -206,18 +188,23 @@ function __doExplore(start, callfile, calldir, options, stats, linkStats, take, 
             scheduler.schedule(files, -start.split(sysPath.sep).length, (file, i, next) => {
                 _explore(sysPath.join(start, file), callfile, calldir, options, next);
             }, err => {
+                const dirend = () => {
+                    if (err) {
+                        cb(err);
+                    } else {
+                        calldir(start, stats, files, "end", cb);
+                    }
+                };
+
                 // take the given token back
                 // so that it will be re-given by the scheduler
                 if (hasTaken) {
                     scheduler.semTake({
-                        priority: Number.NEGATIVE_INFINITY
+                        priority: Number.NEGATIVE_INFINITY,
+                        onTake: dirend
                     });
-                }
-
-                if (err) {
-                    cb(err);
                 } else {
-                    calldir(start, stats, files, "end", cb);
+                    dirend();
                 }
             });
 
@@ -239,7 +226,7 @@ function nextDirectoryFn(path, stats, files, state, done) {
 }
 
 function isObject(value) {
-    return value && (typeof value === "object");
+    return value !== null && typeof value === "object";
 }
 
 function isFunction(value) {
