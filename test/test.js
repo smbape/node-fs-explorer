@@ -281,7 +281,6 @@ describe(require("../package").name, () => {
                     next(new Error("Should resolve link to folder"));
                 }, (path, stats, files, state, next) => {
                     try {
-                        assert.strictEqual(state, "end");
                         assert.strictEqual(files.length, 0);
                         assert.strictEqual(stats.isSymbolicLink(), true);
                     } catch ( err ) {
@@ -387,6 +386,8 @@ describe(require("../package").name, () => {
             client.on("error", cb);
 
             client.on("ready", () => {
+                client.removeListener("error", cb);
+
                 let sftp;
 
                 waterfall([
@@ -455,6 +456,11 @@ describe(require("../package").name, () => {
                         }, next);
                     }
                 ], err => {
+                    client.on("error", err => {
+                        if (err.code !== "ECONNRESET") {
+                            throw err;
+                        }
+                    });
                     client.end();
 
                     if (!err) {

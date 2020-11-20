@@ -8,7 +8,7 @@
   },
   "scripts": {
     "prepublishOnly": "npm run test",
-    "test": "node ./node_modules/mocha/bin/_mocha --full-trace test/*.js"
+    "test": "mocha --full-trace test/*.js"
   },
   "repository": {
     "type": "git",
