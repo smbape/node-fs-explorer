@@ -22,8 +22,8 @@ Explore a file or a directory
  * @param  {Function}   callfile called every time a file is encountered with (path, stats, next)
  * @param  {Function}   calldir  called every time a folder is encountered with (path, stats, files, 'begin|end', next). To skip folder, call next(null, true) on begin
  * @param  {Object}     options
- *                         resolve[=true]           resolve symlink
- *                         followSymlink[=false]    explore symlink if directory
+ *                         resolve[=true]           returns information about the path symbolic links resolves to.
+ *                         followSymlink[=false]    explore the symlink if it resolves to a directory. implies resolve
  *                         limit[=1]                explore multiple paths at time, thus reducing exploration time
  *                         fs[=require("fs")]       filesystem to explore
  *                         path[=require("path")]   filesystem path. Usually one of {posix, win32} = require("path")
@@ -43,7 +43,7 @@ explore('/path/to/dir', (path, stats, next) => {
 });
 ```
 
-Example of remote exploration
+Example of remote exploration using ssh
 
 ```javascript
 const {posix: remoteSysPath} = require("path");
