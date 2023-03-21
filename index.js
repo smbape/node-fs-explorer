@@ -71,7 +71,9 @@ function explore(start, callfile, calldir, options, done) {
         throw new Error("callfile must be a function");
     }
 
-    options = Object.assign({}, defaultOptions, options);
+    options = Object.assign({
+        controller: new AbortController()
+    }, defaultOptions, options);
 
     if (isNaN(options.limit) || options.limit <= 0) {
         options.limit = 1;
@@ -195,7 +197,10 @@ function __doExplore(start, callfile, calldir, options, realStats, stats, cb) {
             const hasTaken = scheduler.getNumTokens() !== scheduler.getCapacity();
 
             // deeper files have higher priority
-            scheduler.schedule(files, -start.split(sysPath.sep).length, (file, i, next) => {
+            scheduler.schedule(files, {
+                priority: -start.split(sysPath.sep).length,
+                controller: options.controller,
+            }, (file, i, next) => {
                 _explore(sysPath.join(start, file), callfile, calldir, options, next);
             }, err => {
                 const dirend = () => {
