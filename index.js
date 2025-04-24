@@ -197,10 +197,7 @@ function __doExplore(start, callfile, calldir, options, realStats, stats, cb) {
             const hasTaken = scheduler.getNumTokens() !== scheduler.getCapacity();
 
             // deeper files have higher priority
-            scheduler.schedule(files, {
-                priority: -start.split(sysPath.sep).length,
-                controller: options.controller,
-            }, (file, i, next) => {
+            scheduler.schedule(files, -start.split(sysPath.sep).length, (file, i, next) => {
                 _explore(sysPath.join(start, file), callfile, calldir, options, next);
             }, err => {
                 const dirend = () => {
